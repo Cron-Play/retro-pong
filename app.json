@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.Natively",
+      "bundleIdentifier": "com.cronplay.retropong",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -42,8 +42,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
-      "backendUrl": "https://5hpakceteudznsrxrenc9ecyd5pwg2vd.app.specular.dev"
+      "router": {}
     }
   }
 }
