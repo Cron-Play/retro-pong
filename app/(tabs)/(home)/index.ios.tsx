@@ -11,7 +11,7 @@ export default function HomeScreen() {
 
   const handlePlayPong = () => {
     console.log('User tapped Play Pong button');
-    router.push('/pong');
+    router.push('/pong-menu');
   };
 
   return (
@@ -20,7 +20,7 @@ export default function HomeScreen() {
         Classic Pong
       </Text>
       <Text style={[styles.subtitle, { color: theme.dark ? '#98989D' : '#666' }]}>
-        Retro 2D Game
+        Enhanced Retro Edition
       </Text>
       
       <TouchableOpacity 
@@ -34,19 +34,19 @@ export default function HomeScreen() {
 
       <View style={styles.features}>
         <Text style={[styles.featureText, { color: theme.dark ? '#98989D' : '#666' }]}>
-          • Classic 2D Pong gameplay
+          • Single player & local multiplayer
         </Text>
         <Text style={[styles.featureText, { color: theme.dark ? '#98989D' : '#666' }]}>
-          • Retro minimalist visuals
+          • AI difficulty settings (Easy/Medium/Hard)
+        </Text>
+        <Text style={[styles.featureText, { color: theme.dark ? '#98989D' : '#666' }]}>
+          • Pause, reset, and resume controls
+        </Text>
+        <Text style={[styles.featureText, { color: theme.dark ? '#98989D' : '#666' }]}>
+          • Optional retro visual effects
         </Text>
         <Text style={[styles.featureText, { color: theme.dark ? '#98989D' : '#666' }]}>
           • Smooth 60 FPS animation
-        </Text>
-        <Text style={[styles.featureText, { color: theme.dark ? '#98989D' : '#666' }]}>
-          • AI opponent
-        </Text>
-        <Text style={[styles.featureText, { color: theme.dark ? '#98989D' : '#666' }]}>
-          • Touch or keyboard controls
         </Text>
       </View>
     </View>

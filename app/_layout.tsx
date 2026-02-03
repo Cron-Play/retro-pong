@@ -46,6 +46,7 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="pong-menu" options={{ headerShown: false }} />
             <Stack.Screen name="pong" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
