@@ -1,9 +1,8 @@
-
 {
   "expo": {
     "name": "Retro Pong",
     "slug": "retro-pong-game-uwjhjd",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/aab807f6-0053-46d7-89b9-82f62b686ee4.png",
     "userInterfaceStyle": "automatic",
@@ -26,7 +25,8 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.cronplay.retropong"
+      "package": "com.cronplay.retropong",
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/images/aab807f6-0053-46d7-89b9-82f62b686ee4.png",
@@ -37,12 +37,13 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "retro-pong",
+    "scheme": "Retro Pong",
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "backendUrl": "https://azvvg5zhpcx9dhtffxcqemzz83g9f6kr.app.specular.dev"
     }
   }
 }
