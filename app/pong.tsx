@@ -14,11 +14,9 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const BANNER_HEIGHT = 50; // Standard banner height
-const SCREEN_HEIGHT = Dimensions.get('window').height - BANNER_HEIGHT;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 const PADDLE_WIDTH = 15;
 const PADDLE_HEIGHT = 100;
 const BALL_SIZE = 15;
@@ -394,12 +392,6 @@ export default function PongScreen() {
     ? 'Courier'
     : 'monospace';
 
-  const adUnitId = Platform.select({
-    ios: TestIds.BANNER,
-    android: TestIds.BANNER,
-    default: TestIds.BANNER,
-  });
-
   return (
     <View style={styles.container}>
       <Stack.Screen
@@ -407,17 +399,6 @@ export default function PongScreen() {
           headerShown: false,
         }}
       />
-
-      {/* AdMob Banner at the top */}
-      <View style={styles.bannerContainer}>
-        <BannerAd
-          unitId={adUnitId}
-          size={BannerAdSize.BANNER}
-          requestOptions={{
-            requestNonPersonalizedAdsOnly: true,
-          }}
-        />
-      </View>
 
       {/* Game area */}
       <View
@@ -581,15 +562,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  bannerContainer: {
-    height: BANNER_HEIGHT,
-    width: '100%',
-    backgroundColor: COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.dim,
   },
   gameArea: {
     flex: 1,
