@@ -6,6 +6,7 @@ import { useFonts } from "expo-font";
 import "react-native-reanimated";
 import { Stack } from "expo-router";
 import { WidgetProvider } from "@/contexts/WidgetContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import * as SplashScreen from "expo-splash-screen";
 import {
   DarkTheme,
@@ -37,22 +38,31 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <WidgetProvider>
-        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-          <SystemBars style={colorScheme === "dark" ? "light" : "dark"} />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="pong-menu" options={{ headerShown: false }} />
-            <Stack.Screen name="pong" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-        </ThemeProvider>
-      </WidgetProvider>
+      <AuthProvider>
+        <WidgetProvider>
+          <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+            <SystemBars style={colorScheme === "dark" ? "light" : "dark"} />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+              }}
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="auth" options={{ headerShown: false }} />
+              <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
+              <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+              <Stack.Screen name="pong-menu" options={{ headerShown: false }} />
+              <Stack.Screen name="pong" options={{ headerShown: false }} />
+              <Stack.Screen name="friends" options={{ headerShown: true, title: "Friends" }} />
+              <Stack.Screen name="add-friend" options={{ headerShown: true, title: "Add Friend" }} />
+              <Stack.Screen name="game-lobby" options={{ headerShown: true, title: "Game Lobby" }} />
+              <Stack.Screen name="online-pong/[roomId]" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+            <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+          </ThemeProvider>
+        </WidgetProvider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

@@ -14,6 +14,8 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+import { apiPost, BACKEND_URL, getBearerToken } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -43,6 +45,7 @@ export default function PongScreen() {
   console.log('User opened Pong game');
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { user } = useAuth();
 
   // Parse params
   const gameMode = (params.gameMode as string) || 'singlePlayer';
@@ -50,9 +53,15 @@ export default function PongScreen() {
   const scanlines = params.scanlines === 'true';
   const pixelatedFont = params.pixelatedFont === 'true';
   const ballTrail = params.ballTrail === 'true';
+  const roomId = params.roomId as string | undefined;
+  const playerNumber = params.playerNumber ? parseInt(params.playerNumber as string) : 1;
 
   const isMultiplayer = gameMode === 'localMultiplayer';
+  const isOnlineMultiplayer = gameMode === 'onlineMultiplayer';
   const aiSpeed = AI_SPEEDS[difficulty as keyof typeof AI_SPEEDS] || AI_SPEEDS.medium;
+
+  // WebSocket ref for online multiplayer
+  const wsRef = useRef<WebSocket | null>(null);
 
   // Game state
   const [player1Score, setPlayer1Score] = useState(0);
@@ -105,6 +114,10 @@ export default function PongScreen() {
         );
         paddle1Y.current = newY;
         paddle1AnimY.value = newY;
+        // Send paddle update for online multiplayer
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'paddle_move', y: newY, player: 1 }));
+        }
       },
       onPanResponderRelease: () => {
         touchY1.current = null;
@@ -128,6 +141,10 @@ export default function PongScreen() {
         );
         paddle2Y.current = newY;
         paddle2AnimY.value = newY;
+        // Send paddle update for online multiplayer
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'paddle_move', y: newY, player: 2 }));
+        }
       },
       onPanResponderRelease: () => {
         touchY2.current = null;
@@ -145,19 +162,31 @@ export default function PongScreen() {
         if (e.key === 'ArrowUp') {
           paddle1Y.current = Math.max(0, paddle1Y.current - moveSpeed);
           paddle1AnimY.value = paddle1Y.current;
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'paddle_move', y: paddle1Y.current, player: 1 }));
+          }
         } else if (e.key === 'ArrowDown') {
           paddle1Y.current = Math.min(SCREEN_HEIGHT - PADDLE_HEIGHT, paddle1Y.current + moveSpeed);
           paddle1AnimY.value = paddle1Y.current;
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'paddle_move', y: paddle1Y.current, player: 1 }));
+          }
         }
 
         // Player 2 controls (W/S keys for multiplayer)
-        if (isMultiplayer) {
+        if (isMultiplayer || isOnlineMultiplayer) {
           if (e.key === 'w' || e.key === 'W') {
             paddle2Y.current = Math.max(0, paddle2Y.current - moveSpeed);
             paddle2AnimY.value = paddle2Y.current;
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({ type: 'paddle_move', y: paddle2Y.current, player: 2 }));
+            }
           } else if (e.key === 's' || e.key === 'S') {
             paddle2Y.current = Math.min(SCREEN_HEIGHT - PADDLE_HEIGHT, paddle2Y.current + moveSpeed);
             paddle2AnimY.value = paddle2Y.current;
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({ type: 'paddle_move', y: paddle2Y.current, player: 2 }));
+            }
           }
         }
       };
@@ -165,7 +194,7 @@ export default function PongScreen() {
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isMultiplayer]);
+  }, [isMultiplayer, isOnlineMultiplayer]);
 
   // Reset ball and paddles to center
   const resetBall = (scoringPlayer: number) => {
@@ -194,6 +223,84 @@ export default function PongScreen() {
     const direction = scoringPlayer === 1 ? 1 : -1;
     ballVelocityX.current = Math.cos(angle) * ballSpeed.current * direction;
     ballVelocityY.current = Math.sin(angle) * ballSpeed.current;
+  };
+
+  // Connect to WebSocket for online multiplayer
+  useEffect(() => {
+    if (!isOnlineMultiplayer || !roomId) return;
+
+    const connectWs = async () => {
+      const token = await getBearerToken();
+      const wsUrl = BACKEND_URL.replace(/^https?/, (m) => (m === 'https' ? 'wss' : 'ws'));
+      const ws = new WebSocket(`${wsUrl}/ws/game/${roomId}`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('[WS] Pong WebSocket connected');
+        if (token) ws.send(token);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'game_state') {
+            // Update opponent paddle and ball from server
+            if (playerNumber === 1) {
+              // Player 1 controls paddle1, receives paddle2 updates
+              paddle2Y.current = data.paddle2Y;
+              paddle2AnimY.value = data.paddle2Y;
+            } else {
+              // Player 2 controls paddle2, receives paddle1 updates
+              paddle1Y.current = data.paddle1Y;
+              paddle1AnimY.value = data.paddle1Y;
+              // Also sync ball from server for player 2
+              ballX.current = data.ballX;
+              ballY.current = data.ballY;
+              ballAnimX.value = data.ballX;
+              ballAnimY.value = data.ballY;
+            }
+          } else if (data.type === 'game_over') {
+            console.log('[WS] Game over received, winner:', data.winnerId);
+          }
+        } catch (e) {
+          console.error('[WS] Parse error:', e);
+        }
+      };
+
+      ws.onerror = (err) => console.error('[WS] Pong WS error:', err);
+      ws.onclose = () => console.log('[WS] Pong WS closed');
+    };
+
+    connectWs();
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, [isOnlineMultiplayer, roomId]);
+
+  // Send paddle position updates via WebSocket
+  const sendPaddleUpdate = (y: number) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({
+      type: 'paddle_move',
+      y,
+      player: playerNumber,
+    }));
+  };
+
+  // Finish game via API for online multiplayer
+  const finishOnlineGame = async (winnerId: string) => {
+    if (!roomId) return;
+    try {
+      console.log('[API] Finishing online game, winner:', winnerId);
+      await apiPost(`/api/game/${roomId}/finish`, { winnerId });
+      console.log('[API] Game finished successfully');
+    } catch (err) {
+      console.error('[API] Failed to finish game:', err);
+    }
   };
 
   // Start game
@@ -238,7 +345,7 @@ export default function PongScreen() {
 
   // AI for paddle 2 (single player mode only)
   const updateAI = () => {
-    if (isMultiplayer) return;
+    if (isMultiplayer || isOnlineMultiplayer) return;
 
     const targetY = ballY.current - PADDLE_HEIGHT / 2;
     const diff = targetY - paddle2Y.current;
@@ -325,11 +432,34 @@ export default function PongScreen() {
       setPlayer2Score(newScore);
       if (newScore >= WINNING_SCORE) {
         setGameOver(true);
-        const winnerName = isMultiplayer ? 'Player 2' : 'Player 2 (AI)';
+        const winnerName = isMultiplayer ? 'Player 2' : isOnlineMultiplayer ? 'Player 2' : 'Player 2 (AI)';
         setWinner(winnerName);
         console.log(winnerName, 'wins the game');
+        // For online multiplayer, notify server about game finish
+        if (isOnlineMultiplayer && roomId) {
+          // Player 2 wins - we need the actual user ID of player 2
+          // We'll send a score update via WS and finish via API
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+              type: 'score',
+              player1Score,
+              player2Score: newScore,
+            }));
+          }
+          // Only the host (player 1) calls finish to avoid duplicate calls
+          if (playerNumber === 1) {
+            finishOnlineGame('player2');
+          }
+        }
       } else {
         resetBall(2);
+        if (isOnlineMultiplayer && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({
+            type: 'score',
+            player1Score,
+            player2Score: newScore,
+          }));
+        }
       }
     } else if (ballX.current >= SCREEN_WIDTH - BALL_SIZE) {
       console.log('Player 1 scored');
@@ -339,8 +469,27 @@ export default function PongScreen() {
         setGameOver(true);
         setWinner('Player 1');
         console.log('Player 1 wins the game');
+        if (isOnlineMultiplayer && roomId) {
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+              type: 'score',
+              player1Score: newScore,
+              player2Score,
+            }));
+          }
+          if (playerNumber === 1) {
+            finishOnlineGame('player1');
+          }
+        }
       } else {
         resetBall(1);
+        if (isOnlineMultiplayer && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({
+            type: 'score',
+            player1Score: newScore,
+            player2Score,
+          }));
+        }
       }
     }
 
